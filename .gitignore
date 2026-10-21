@@ -1,0 +1,21 @@
+# environment / secrets
+.env
+.env.local
+.env.*.local
+
+# dependencies
+node_modules/
+.venv/
+
+# python
+__pycache__/
+*.pyc
+
+# build output
+/build
+/dist
+frontend/cutebuddy/dist/
+frontend/.netlify/
+
+# OS / editor
+.DS_Store
