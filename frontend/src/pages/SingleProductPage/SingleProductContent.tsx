@@ -2,16 +2,25 @@ import React from 'react'
 import { useProductsContext } from '../../context/products_context'
 import { formatPrice } from '../../utils/helpers'
 import { AddToCart } from '../../components'
+import WishlistButton from '../../components/Wishlist/WishlistButton'
+import { productDataType } from '../../utils/productData'
 
 export const SingleProductContent = () => {
   const { singleProduct } = useProductsContext()
 
-  const { name, price, itemDescription, brand, stock,  ageDescription, heightDescription } = {
+  const { id, name, price, itemDescription, brand, stock,  ageDescription, heightDescription } = {
     ...singleProduct,
   }
   return (
     <section className='content'>
-      <h2>{name}</h2>
+      <div className='title-row'>
+        <h2>{name}</h2>
+        {id && (
+          <span className='wishlist-wrap'>
+            <WishlistButton product={singleProduct as productDataType} />
+          </span>
+        )}
+      </div>
       <h5 className='price'>{price && formatPrice(price)}</h5>
       <p className='desc'>{itemDescription}</p>
       <p className='info'>

@@ -57,6 +57,21 @@ const Wrapper = styled.main`
     gap: 4rem;
     margin-top: 2rem;
   }
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .wishlist-wrap {
+    position: relative;
+    display: inline-block;
+    width: 2.25rem;
+    height: 2.25rem;
+    flex-shrink: 0;
+  }
+  .wishlist-wrap button {
+    position: static;
+  }
   .price {
     color: var(--clr-primary-5);
   }
