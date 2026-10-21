@@ -23,7 +23,9 @@ fastapi dev app/main.py                               # alternative dev server c
 ```
 
 - Entry point is `app/main.py`, **not** a root-level `main.py` (an earlier skeleton version had `main.py` directly under `backend/`; it was moved into the `app/` package and removed).
-- **Always activate the venv first**: `backend\.venv\Scripts\activate` (Windows) before running any of the above, or call the venv's binaries directly (`./.venv/Scripts/uvicorn.exe`, `./.venv/Scripts/alembic.exe`, etc.) from `backend/`.
+- **Always activate the venv first**: `backend\.venv\Scripts\activate` (Windows) or `source backend/.venv/bin/activate` (Linux/macOS/Codespaces) before running any of the above, or call the venv's binaries directly (`./.venv/Scripts/uvicorn.exe` on Windows, `./.venv/bin/uvicorn` elsewhere) from `backend/`.
+- The API has **no URL prefix** (`app/api/v1/api.py` is included at the root in `app/main.py`), so routes are `/products`, `/auth/...`, `/cart/...`, `/orders/...`, `/wishlist/...` plus health checks (`health.py`, `db_health.py`). `/docs` serves the interactive OpenAPI UI.
+- There is no `.env.example` for the backend; `.env` needs `DATABASE_URL`, `JWT_SECRET_KEY` (empty by default, so set it), and optionally `CORS_ORIGINS`, `JWT_ALGORITHM`, `JWT_ACCESS_TOKEN_EXPIRE_MINUTES`. `frontend/.env.example` does exist.
 - Prefer `--reload-dir app` over plain `--reload` / `fastapi dev`: without it, the reloader also watches `.venv/`, which floods logs with spurious reload events on every dependency install.
 - No automated tests exist yet (`tests/` is an empty scaffold); no lint config or CI.
 
@@ -49,7 +51,7 @@ fastapi dev app/main.py                               # alternative dev server c
 
 ### Architecture — layered, per-resource
 
-Each resource (`Product`, `User`/auth so far) follows the same five-layer pattern; use it as the template for new resources:
+Each resource (`Product`, `User`/auth, `Cart`, `Order`, `Wishlist`) follows the same five-layer pattern; use it as the template for new resources:
 
 ```
 app/models/<resource>.py        SQLAlchemy ORM model (table definition)
@@ -62,6 +64,7 @@ app/api/v1/endpoints/<resource>.py  FastAPI router (thin — delegates to servic
 - New models must be imported in `app/models/__init__.py` so Alembic's autogenerate (via `Base.metadata`) picks them up.
 - New routers must be registered in `app/api/v1/api.py`.
 - `app/utils/` exists as scaffolding but is currently empty.
+- `backend/reset_admin_password.py` is a stray dev script at the backend root (not in `scripts/`) with a hardcoded email/password (`admin@test.com`); treat it as local-dev only, don't copy its pattern, and don't extend it.
 - `scripts/` holds one-off/maintenance scripts, e.g. `create_admin.py`. Run these with `PYTHONPATH=.` set (from `backend/`) so the `app` package resolves — they're not inside the `app` package themselves.
 - CORS is configured in `app/middleware/cors.py`, wired into `app/main.py` via `setup_cors(app)`. Allowed origins come from `CORS_ORIGINS` in `.env` (comma-separated), default `http://localhost:3000` (CRA's dev server port).
 
@@ -90,6 +93,7 @@ npx tsc --noEmit      # typecheck without running the dev server/build
 ### API integration layer
 
 - `src/utils/apiClient.ts` — the one axios instance everything uses (`baseURL` from `REACT_APP_API_BASE_URL`). A request interceptor attaches `Authorization: Bearer <token>` from `localStorage` (`cutebuddy_token`) automatically; a response interceptor clears the token on `401`. Use `getApiErrorMessage(error)` to extract a backend error's `detail` for display.
+- State is split: Redux Toolkit (`src/store/`: `authSlice`, `wishlistSlice`, typed `hooks.ts`) for auth/wishlist, and Context+reducer (`src/context/`) for cart, filters, and products.
 - `src/store/authSlice.ts` — Redux Toolkit slice for auth (`login`, `signup`, `fetchCurrentUser` thunks, `logout`/`clearAuthError` actions). Token persisted to `localStorage`; rehydrated on app load via `fetchCurrentUser()` in `App.tsx`.
 - `src/hooks/useWishlistActions.ts` — wraps the existing local `wishlistSlice` (unchanged, still used as-is for guests) with backend sync for logged-in users (`toggle`/`remove`/`clear`/`syncFromBackend`). Use this hook instead of dispatching `wishlistSlice` actions directly anywhere a user-facing wishlist action happens.
 - **Cart stays client-side-only** (`cart_context.tsx`/`cart_reducer.tsx`, untouched) until checkout — the backend cart (`/cart/items`) is populated right before calling `/orders/checkout` in `CheckoutPage.tsx`, not on every add/remove. This was a deliberate scope call to avoid rewriting the whole cart UI component tree; if that changes, every cart mutation (`CartItem.tsx`, `AmountButtons.tsx`, `CartContent.tsx`) would need to start calling the backend directly instead.
